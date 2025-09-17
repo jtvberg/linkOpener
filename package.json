@@ -1,0 +1,33 @@
+{
+  "name": "google-docs-link-opener",
+  "version": "1.0.0",
+  "description": "A Google Apps Script tool that automatically finds and opens all hyperlinks in a Google Document in new browser tabs",
+  "main": "Code.gs",
+  "keywords": [
+    "google-apps-script",
+    "google-docs",
+    "link-opener",
+    "automation",
+    "productivity"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/linkOpener.git"
+  },
+  "files": [
+    "Code.gs",
+    "LinkDialog.html",
+    "appsscript.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "deploy": "clasp push",
+    "setup": "clasp create --type standalone"
+  },
+  "devDependencies": {
+    "@google/clasp": "^2.4.1"
+  }
+}
