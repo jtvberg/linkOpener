@@ -191,7 +191,6 @@ function createSinglePageApp() {
  */
 function extractLinksFromInput(input) {
   console.log('extractLinksFromInput called with:', input);
-  console.log('Running as user:', Session.getActiveUser().getEmail());
   
   try {
     let doc;
