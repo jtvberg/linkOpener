@@ -5,13 +5,176 @@
 
 /**
  * Adds a custom menu to the Google Docs interface when the document opens
+ * Note: This only works if you own the document and the script is bound to it
  */
 function onOpen() {
-  const ui = DocumentApp.getUi();
-  ui.createMenu('Link Opener')
-    .addItem('Open All Links', 'openAllLinksDialog')
-    .addItem('Extract Links Only', 'showLinksDialog')
-    .addToUi();
+  try {
+    const ui = DocumentApp.getUi();
+    ui.createMenu('Link Opener')
+      .addItem('Open All Links', 'openAllLinksDialog')
+      .addItem('Extract Links Only', 'showLinksDialog')
+      .addToUi();
+  } catch (error) {
+    console.log('onOpen() can only be called when script is bound to a document.');
+    console.log('For standalone use, run processDocumentLinks() instead.');
+  }
+}
+
+/**
+ * Standalone function to process links from any document you have access to
+ * Run this function from the Apps Script editor
+ */
+function processDocumentLinks() {
+  // Prompt for document URL or ID using Browser.inputBox for standalone scripts
+  let input;
+  
+  try {
+    // Try using Browser.inputBox for standalone scripts
+    input = Browser.inputBox(
+      'Document URL or ID',
+      'Enter the Google Docs URL or Document ID:',
+      Browser.Buttons.OK_CANCEL
+    );
+    
+    if (input === 'cancel' || !input) {
+      console.log('Operation cancelled or no input provided.');
+      return;
+    }
+  } catch (error) {
+    // Fallback: provide instructions for manual input
+    console.log('To use this script:');
+    console.log('1. Replace DOCUMENT_ID_HERE with the actual document ID in the line below');
+    console.log('2. Or use the full URL with processDocumentByUrl function');
+    console.log('');
+    console.log('Example document ID: 1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms');
+    console.log('Example URL: https://docs.google.com/document/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit');
+    console.log('');
+    console.log('Uncomment one of these lines and run the function again:');
+    console.log('// const doc = DocumentApp.openById("DOCUMENT_ID_HERE");');
+    console.log('// const doc = DocumentApp.openByUrl("FULL_DOCUMENT_URL_HERE");');
+    
+    return;
+  }
+  
+  try {
+    let doc;
+    if (input.includes('docs.google.com')) {
+      doc = DocumentApp.openByUrl(input);
+    } else {
+      doc = DocumentApp.openById(input);
+    }
+    
+    // Process the document
+    processDocument(doc);
+    
+  } catch (error) {
+    console.error('Error accessing document:', error);
+    console.log('Could not access the document. Make sure you have edit access and the URL/ID is correct.');
+    console.log('Error details: ' + error.message);
+  }
+}
+
+/**
+ * Alternative function for when you want to hardcode the document ID
+ * Replace DOCUMENT_ID_HERE with your actual document ID
+ */
+function processSpecificDocument() {
+  const DOCUMENT_ID = 'DOCUMENT_ID_HERE'; // Replace with actual document ID
+  
+  try {
+    const doc = DocumentApp.openById(DOCUMENT_ID);
+    processDocument(doc);
+  } catch (error) {
+    console.error('Error accessing document:', error);
+    console.log('Make sure to replace DOCUMENT_ID_HERE with the actual document ID');
+  }
+}
+
+/**
+ * Alternative function for when you want to hardcode the document URL
+ * Replace DOCUMENT_URL_HERE with your actual document URL
+ */
+function processDocumentByUrl() {
+  const DOCUMENT_URL = 'DOCUMENT_URL_HERE'; // Replace with actual document URL
+  
+  try {
+    const doc = DocumentApp.openByUrl(DOCUMENT_URL);
+    processDocument(doc);
+  } catch (error) {
+    console.error('Error accessing document:', error);
+    console.log('Make sure to replace DOCUMENT_URL_HERE with the actual document URL');
+  }
+}
+
+/**
+ * Helper function to get document by ID
+ */
+function getDocumentById(documentId) {
+  return DocumentApp.openById(documentId);
+}
+
+/**
+ * Helper function to get document by URL
+ */
+function getDocumentByUrl(documentUrl) {
+  return DocumentApp.openByUrl(documentUrl);
+}
+
+/**
+ * Process a specific document for links
+ */
+function processDocument(doc) {
+  try {
+    const links = extractAllLinksFromDocument(doc);
+    
+    if (links.length === 0) {
+      console.log('No links found in the document.');
+      return;
+    }
+    
+    console.log(`Found ${links.length} links in the document:`);
+    links.forEach((link, index) => {
+      console.log(`${index + 1}. ${link.text} -> ${link.url} ${link.isValid ? '' : '(Invalid)'}`);
+    });
+    
+    // Create HTML dialog for link opening
+    try {
+      const html = createLinkDialog(links, 'open');
+      
+      // Try to display the HTML dialog in a new window/tab
+      const htmlContent = html.getContent();
+      
+      // For standalone scripts, we'll create a web app or use HtmlService
+      const htmlOutput = HtmlService.createHtmlOutput(htmlContent)
+        .setWidth(600)
+        .setHeight(800);
+        
+      // Since we can't use DocumentApp.getUi() in standalone context,
+      // we'll use a different approach - create a temporary web app
+      console.log('Links extracted successfully!');
+      console.log('To open the interactive dialog:');
+      console.log('1. Deploy this script as a web app');
+      console.log('2. Or copy the links from the console output above');
+      console.log('3. Or use the openLinksFromConsole() function');
+      
+    } catch (error) {
+      console.log('Could not create dialog in this context.');
+      console.log('Links are listed above in the console.');
+    }
+    
+  } catch (error) {
+    console.error('Error processing document:', error);
+  }
+}
+
+/**
+ * Opens all valid links found in the last processed document
+ * Run this after processDocumentLinks() to open the links
+ */
+function openLinksFromConsole() {
+  console.log('Note: This function would need to be enhanced to store the last found links.');
+  console.log('For now, copy the URLs from the console output and open them manually.');
+  console.log('Or deploy the script as a web app for the full interactive experience.');
 }
 
 /**
@@ -55,6 +218,36 @@ function showLinksDialog() {
 }
 
 /**
+ * Standalone version that works with any document you have access to
+ */
+function openAllLinksFromDocument(doc) {
+  try {
+    const links = extractAllLinksFromDocument(doc);
+    
+    if (links.length === 0) {
+      console.log('No hyperlinks were found in this document.');
+      return;
+    }
+    
+    const html = createLinkDialog(links, 'open');
+    
+    // Try to show dialog in different contexts
+    if (typeof DocumentApp !== 'undefined' && DocumentApp.getUi) {
+      DocumentApp.getUi().showModalDialog(html, 'Open All Links');
+    } else if (typeof SpreadsheetApp !== 'undefined' && SpreadsheetApp.getUi) {
+      SpreadsheetApp.getUi().showModalDialog(html, 'Open All Links');
+    } else {
+      console.log('Dialog cannot be displayed in this context. Links found:');
+      links.forEach((link, index) => {
+        console.log(`${index + 1}. ${link.text} -> ${link.url}`);
+      });
+    }
+  } catch (error) {
+    console.error('Error in openAllLinksFromDocument:', error);
+  }
+}
+
+/**
  * Creates the HTML dialog with data injected directly
  * This avoids the need for google.script.run calls that cause transport errors
  */
@@ -94,6 +287,15 @@ function createLinkDialog(links, mode) {
  */
 function extractAllLinks() {
   const doc = DocumentApp.getActiveDocument();
+  return extractAllLinksFromDocument(doc);
+}
+
+/**
+ * Extracts all hyperlinks from a specified Google Document
+ * @param {Document} doc The Google Document to extract links from
+ * @return {Array} Array of objects containing link text and URL
+ */
+function extractAllLinksFromDocument(doc) {
   const body = doc.getBody();
   const links = [];
   
