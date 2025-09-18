@@ -12,7 +12,7 @@ function createSinglePageApp() {
   const html = `<!DOCTYPE html>
 <html>
 <head>
-    <title>Link Opener - Simple</title>
+    <title>Inkling Tools</title>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
         .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
@@ -32,6 +32,12 @@ function createSinglePageApp() {
     
     <div class="section">
         <h3>Step 1: Enter Document</h3>
+        <p><strong>Important:</strong> You must have edit access to the document. The document can be:</p>
+        <ul>
+            <li>A document you created</li>
+            <li>A document shared with you with edit permissions</li>
+            <li>A document in a shared drive you have access to</li>
+        </ul>
         <input type="text" id="docInput" placeholder="Paste Google Docs URL or Document ID here">
         <br>
         <button onclick="extractLinks()">Extract Links</button>
@@ -175,7 +181,7 @@ function createSinglePageApp() {
 </html>`;
 
   return HtmlService.createHtmlOutput(html)
-    .setTitle('Link Opener - Simple')
+    .setTitle('Inkling Tools')
     .setWidth(800)
     .setHeight(600);
 }
@@ -185,6 +191,7 @@ function createSinglePageApp() {
  */
 function extractLinksFromInput(input) {
   console.log('extractLinksFromInput called with:', input);
+  console.log('Running as user:', Session.getActiveUser().getEmail());
   
   try {
     let doc;
@@ -215,7 +222,19 @@ function extractLinksFromInput(input) {
     
   } catch (error) {
     console.error('Error in extractLinksFromInput:', error);
-    throw new Error('Could not access document: ' + error.message);
+    
+    // Provide more helpful error messages
+    let errorMessage = error.message;
+    
+    if (error.message.includes('Permission denied') || error.message.includes('Access denied')) {
+      errorMessage = 'Permission denied. Make sure you have edit access to this document. If this is your document, the web app might need to be configured to run as "User accessing the web app" instead of the script owner.';
+    } else if (error.message.includes('Invalid argument') || error.message.includes('not found')) {
+      errorMessage = 'Document not found. Please check that the URL or ID is correct and the document exists.';
+    } else if (error.message.includes('No item with the given ID could be found')) {
+      errorMessage = 'Document ID not found. Please check that the document ID is correct and you have access to the document.';
+    }
+    
+    throw new Error(errorMessage);
   }
 }
 
