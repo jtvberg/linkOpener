@@ -13,7 +13,7 @@
   console.log('Document ID:', docId);
   console.log('Document URL:', docUrl);
 
-  const webAppUrl = 'https://script.google.com/macros/s/AKfycbxuiEOMFZAkakxfgUYGGXTMvSLqfvyEFfYgF5IWacGC8d31OKVpJOJtAzCmQEV-H6vzsw/exec'  
+  const webAppUrl = 'https://script.google.com/macros/s/AKfycbxRhTWGO4_uMsDJDDKrcGmjIq6dZcXnnUKylt3pvPpb-HoAf7edVGYG1TJge_bL4OFDng/exec'  
   console.log('Opening web app with document URL...');
 
   const webAppWithParams = webAppUrl + '?docUrl=' + encodeURIComponent(docUrl);

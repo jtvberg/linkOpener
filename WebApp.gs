@@ -25,7 +25,6 @@ function createSinglePageApp(initialDocUrl = '') {
 </head>
 <body>
     <h1>Google Docs Link Opener</h1>
-    
     <div class="section" id="linksSection">
         <h3>Found Links</h3>
         <div id="documentInfo" style="background: #e8f0fe; color: #1a73e8; padding: 10px; border-radius: 4px; margin: 10px 0;">
@@ -139,9 +138,11 @@ function createSinglePageApp(initialDocUrl = '') {
             showMessage('Opening ' + urls.length + ' links...', 'loading');
             
             let opened = 0;
-            urls.forEach(url => {
+            urls.forEach((url, index) => {
                 try {
-                    window.open(url, '_blank');
+                    // Force new window by providing window features
+                    // Each window gets a unique name to prevent reuse
+                    window.open(url, 'linkWindow_' + index, 'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=yes,location=yes');
                     opened++;
                 } catch (error) {
                     console.error('Failed to open:', url, error);
