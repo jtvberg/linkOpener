@@ -26,23 +26,12 @@ function createSinglePageApp(initialDocUrl = '') {
 <body>
     <h1>Google Docs Link Opener</h1>
     
-    <div class="section">
-        <h3>Step 1: Enter Document</h3>
-        <p><strong>Important:</strong> You must have edit access to the document. The document can be:</p>
-        <ul>
-            <li>A document you created</li>
-            <li>A document shared with you with edit permissions</li>
-            <li>A document in a shared drive you have access to</li>
-        </ul>
-        <input type="text" id="docInput" placeholder="Paste Google Docs URL or Document ID here" value="${initialDocUrl}">
-        <br>
-        <button onclick="extractLinks()">Extract Links</button>
+    <div class="section" id="linksSection">
+        <h3>Found Links</h3>
+        <div id="documentInfo" style="background: #e8f0fe; color: #1a73e8; padding: 10px; border-radius: 4px; margin: 10px 0;">
+            Processing document: ${initialDocUrl || 'Loading...'}
+        </div>
         <div id="message"></div>
-        ${initialDocUrl ? '<div class="auto-extract">Document URL detected from bookmarklet. Click "Extract Links" to process.</div>' : ''}
-    </div>
-    
-    <div class="section" id="linksSection" style="display: none;">
-        <h3>Step 2: Found Links</h3>
         <div id="linkControls" style="margin: 10px 0;">
             <button onclick="openAllValid()">Open All Valid Links</button>
             <button onclick="openSelected()" id="openSelected" style="display: none;">Open Selected</button>
@@ -61,9 +50,9 @@ function createSinglePageApp(initialDocUrl = '') {
         }
         
         function extractLinks() {
-            const input = document.getElementById('docInput').value.trim();
-            if (!input) {
-                showMessage('Please enter a document URL or ID', 'error');
+            const docUrl = '${initialDocUrl}';
+            if (!docUrl) {
+                showMessage('No document URL provided', 'error');
                 return;
             }
             
@@ -73,7 +62,7 @@ function createSinglePageApp(initialDocUrl = '') {
             google.script.run
                 .withSuccessHandler(onLinksExtracted)
                 .withFailureHandler(onExtractionError)
-                .extractLinksFromInput(input);
+                .extractLinksFromInput(docUrl);
         }
         
         function onLinksExtracted(links) {
@@ -81,7 +70,6 @@ function createSinglePageApp(initialDocUrl = '') {
             
             if (links.length === 0) {
                 showMessage('No links found in the document', 'error');
-                document.getElementById('linksSection').style.display = 'none';
                 return;
             }
             
@@ -99,14 +87,12 @@ function createSinglePageApp(initialDocUrl = '') {
                 '</div>'
             ).join('');
             
-            document.getElementById('linksSection').style.display = 'block';
             updateButtons();
         }
         
         function onExtractionError(error) {
             console.error('Extraction error:', error);
             showMessage('Error: ' + error.message, 'error');
-            document.getElementById('linksSection').style.display = 'none';
         }
         
         function escapeHtml(text) {
@@ -167,19 +153,13 @@ function createSinglePageApp(initialDocUrl = '') {
             }, 1000);
         }
         
-        // Allow Enter key to submit
-        document.getElementById('docInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                extractLinks();
-            }
-        });
-        
-        // Auto-extract if URL is pre-filled from bookmarklet
+        // Auto-extract when page loads
         window.addEventListener('load', function() {
-            const input = document.getElementById('docInput');
-            if (input.value.trim() && input.value.includes('docs.google.com')) {
-                showMessage('Document URL detected from bookmarklet. Extracting links...', 'loading');
-                setTimeout(extractLinks, 1000); // Give the page a moment to fully load
+            const docUrl = '${initialDocUrl}';
+            if (docUrl && docUrl.includes('docs.google.com')) {
+                setTimeout(extractLinks, 500); // Give the page a moment to fully load
+            } else {
+                showMessage('No document URL provided or invalid URL', 'error');
             }
         });
     </script>
