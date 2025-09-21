@@ -1,14 +1,9 @@
-/**
- * Simple Single-Page Web App - No Redirects
- * This version keeps everything on one page to avoid redirect issues
- */
-
 function doGet(e) {
-  console.log('doGet called');
-  return createSinglePageApp();
+  console.log('doGet called with parameters:', e.parameter);
+  return createSinglePageApp(e.parameter.docUrl);
 }
 
-function createSinglePageApp() {
+function createSinglePageApp(initialDocUrl = '') {
   const html = `<!DOCTYPE html>
 <html>
 <head>
@@ -25,6 +20,7 @@ function createSinglePageApp() {
         .link-item { border: 1px solid #eee; margin: 5px 0; padding: 10px; border-radius: 3px; }
         .link-text { font-weight: bold; }
         .link-url { color: #666; font-size: 0.9em; word-break: break-all; }
+        .auto-extract { background: #e8f0fe; color: #1a73e8; padding: 10px; border-radius: 4px; margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -38,10 +34,11 @@ function createSinglePageApp() {
             <li>A document shared with you with edit permissions</li>
             <li>A document in a shared drive you have access to</li>
         </ul>
-        <input type="text" id="docInput" placeholder="Paste Google Docs URL or Document ID here">
+        <input type="text" id="docInput" placeholder="Paste Google Docs URL or Document ID here" value="${initialDocUrl}">
         <br>
         <button onclick="extractLinks()">Extract Links</button>
         <div id="message"></div>
+        ${initialDocUrl ? '<div class="auto-extract">Document URL detected from bookmarklet. Click "Extract Links" to process.</div>' : ''}
     </div>
     
     <div class="section" id="linksSection" style="display: none;">
@@ -174,6 +171,15 @@ function createSinglePageApp() {
         document.getElementById('docInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 extractLinks();
+            }
+        });
+        
+        // Auto-extract if URL is pre-filled from bookmarklet
+        window.addEventListener('load', function() {
+            const input = document.getElementById('docInput');
+            if (input.value.trim() && input.value.includes('docs.google.com')) {
+                showMessage('Document URL detected from bookmarklet. Extracting links...', 'loading');
+                setTimeout(extractLinks, 1000); // Give the page a moment to fully load
             }
         });
     </script>
