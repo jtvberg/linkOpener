@@ -25,6 +25,7 @@ function createSinglePageApp(initialDocUrl = '') {
 </head>
 <body>
     <h1>Google Docs Link Opener</h1>
+    
     <div class="section" id="linksSection">
         <h3>Found Links</h3>
         <div id="documentInfo" style="background: #e8f0fe; color: #1a73e8; padding: 10px; border-radius: 4px; margin: 10px 0;">
@@ -91,32 +92,7 @@ function createSinglePageApp(initialDocUrl = '') {
         
         function onExtractionError(error) {
             console.error('Extraction error:', error);
-            console.error('Error details:', {
-                message: error.message,
-                type: typeof error,
-                stack: error.stack
-            });
-            
-            let userMessage = 'Error: ' + error.message;
-            
-            // Provide actionable error messages
-            if (error.message.includes('Permission denied') || error.message.includes('Access denied')) {
-                userMessage += '\n\nTry these steps:\n1. Refresh this page and sign in again\n2. Check that you have view/edit access to the document\n3. If this is your document, verify the web app permissions';
-            } else if (error.message.includes('Service unavailable') || error.message.includes('Backend error')) {
-                userMessage += '\n\nGoogle Docs service appears to be temporarily unavailable. Please try again in a few moments.';
-            } else if (error.message.includes('quota') || error.message.includes('limit')) {
-                userMessage += '\n\nService quota exceeded. Please wait a moment before trying again.';
-            }
-            
-            showMessage(userMessage, 'error');
-            
-            // Add retry button for certain errors
-            if (error.message.includes('Service unavailable') || error.message.includes('quota')) {
-                setTimeout(() => {
-                    const retryButton = '<button onclick="extractLinks()" style="margin-top: 10px;">Retry</button>';
-                    document.getElementById('message').innerHTML += retryButton;
-                }, 1000);
-            }
+            showMessage('Error: ' + error.message, 'error');
         }
         
         function escapeHtml(text) {
@@ -163,72 +139,20 @@ function createSinglePageApp(initialDocUrl = '') {
             showMessage('Opening ' + urls.length + ' links...', 'loading');
             
             let opened = 0;
-            let failed = 0;
-            const failures = [];
-            
-            // Check if popup blocker might interfere
-            if (urls.length > 1) {
-                const testWindow = window.open('', 'popupTest', 'width=1,height=1');
-                if (!testWindow || testWindow.closed) {
-                    showMessage('Popup blocker detected. Please allow popups for this site and try again.', 'error');
-                    return;
-                }
-                testWindow.close();
-            }
-            
             urls.forEach((url, index) => {
                 try {
-                    // Add small delay between opens to avoid browser restrictions
-                    setTimeout(() => {
-                        try {
-                            // Enhanced window.open with fallback
-                            const newWindow = window.open(
-                                url, 
-                                'linkWindow_' + Date.now() + '_' + index, 
-                                'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=yes,location=yes,menubar=yes,status=yes'
-                            );
-                            
-                            if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-                                // Fallback: try without window features
-                                const fallbackWindow = window.open(url, '_blank');
-                                if (!fallbackWindow) {
-                                    throw new Error('Popup blocked or failed');
-                                }
-                            }
-                            
-                            opened++;
-                            
-                            // Update status after last link
-                            if (index === urls.length - 1) {
-                                setTimeout(() => {
-                                    if (failed > 0) {
-                                        showMessage('Opened ' + opened + ' out of ' + urls.length + ' links. ' + failed + ' failed: ' + failures.join(', '), 'error');
-                                    } else {
-                                        showMessage('Successfully opened all ' + opened + ' links!', 'success');
-                                    }
-                                }, 500);
-                            }
-                            
-                        } catch (error) {
-                            console.error('Failed to open:', url, error);
-                            failed++;
-                            failures.push(url.substring(0, 50) + (url.length > 50 ? '...' : ''));
-                            
-                            // Update status after last link
-                            if (index === urls.length - 1) {
-                                setTimeout(() => {
-                                    showMessage('Opened ' + opened + ' out of ' + urls.length + ' links. ' + failed + ' failed: ' + failures.join(', '), 'error');
-                                }, 500);
-                            }
-                        }
-                    }, index * 100); // 100ms delay between each link
-                    
+                    // Force new window by providing window features
+                    // Each window gets a unique name to prevent reuse
+                    window.open(url, 'linkWindow_' + index, 'width=1200,height=800,scrollbars=yes,resizable=yes,toolbar=yes,location=yes');
+                    opened++;
                 } catch (error) {
-                    console.error('Immediate error for:', url, error);
-                    failed++;
-                    failures.push(url.substring(0, 50) + (url.length > 50 ? '...' : ''));
+                    console.error('Failed to open:', url, error);
                 }
             });
+            
+            setTimeout(() => {
+                showMessage('Opened ' + opened + ' out of ' + urls.length + ' links', 'success');
+            }, 1000);
         }
         
         // Auto-extract when page loads
@@ -259,68 +183,24 @@ function extractLinksFromInput(input) {
   try {
     let doc;
     
-    // Enhanced input validation
-    if (!input || typeof input !== 'string' || input.trim() === '') {
-      throw new Error('Invalid input: Document URL or ID is required');
-    }
-    
-    input = input.trim();
-    
     if (input.includes('docs.google.com')) {
       console.log('Opening by URL');
-      // Enhanced URL cleaning
+      // Clean the URL
       let cleanUrl = input;
-      
-      // Remove everything after /edit and common parameters
-      cleanUrl = cleanUrl.split('/edit')[0];
-      cleanUrl = cleanUrl.split('?')[0];
-      cleanUrl = cleanUrl.split('#')[0];
-      
-      // Ensure it ends with proper format
-      if (!cleanUrl.endsWith('/edit')) {
-        cleanUrl += '/edit';
+      if (cleanUrl.includes('?')) {
+        cleanUrl = cleanUrl.split('?')[0];
       }
-      
-      console.log('Original URL:', input);
+      if (cleanUrl.includes('#')) {
+        cleanUrl = cleanUrl.split('#')[0];
+      }
       console.log('Cleaned URL:', cleanUrl);
-      
-      // Add retry logic for document access
-      let attempts = 0;
-      const maxAttempts = 3;
-      
-      while (attempts < maxAttempts) {
-        try {
-          doc = DocumentApp.openByUrl(cleanUrl);
-          break;
-        } catch (retryError) {
-          attempts++;
-          console.log(`Attempt ${attempts} failed:`, retryError.message);
-          
-          if (attempts >= maxAttempts) {
-            throw retryError;
-          }
-          
-          // Brief pause before retry
-          Utilities.sleep(1000);
-        }
-      }
-      
+      doc = DocumentApp.openByUrl(cleanUrl);
     } else {
       console.log('Opening by ID');
-      // Extract document ID if it's embedded in a URL
-      let docId = input;
-      const idMatch = input.match(/\/d\/([a-zA-Z0-9-_]+)/);
-      if (idMatch) {
-        docId = idMatch[1];
-        console.log('Extracted ID from URL:', docId);
-      }
-      
-      doc = DocumentApp.openById(docId);
+      doc = DocumentApp.openById(input);
     }
     
-    // Verify document access
-    const docName = doc.getName();
-    console.log('Document opened successfully:', docName);
+    console.log('Document opened:', doc.getName());
     
     const links = extractAllLinksFromDocument(doc);
     console.log('Found', links.length, 'links');
@@ -329,20 +209,16 @@ function extractLinksFromInput(input) {
     
   } catch (error) {
     console.error('Error in extractLinksFromInput:', error);
-    console.error('Error type:', typeof error);
-    console.error('Error stack:', error.stack);
     
-    // Enhanced error message handling
-    let errorMessage = error.message || 'Unknown error occurred';
+    // Provide more helpful error messages
+    let errorMessage = error.message;
     
-    if (errorMessage.includes('Permission denied') || errorMessage.includes('Access denied')) {
-      errorMessage = 'Permission denied. Please ensure you have view/edit access to this document. Try refreshing your browser and signing in again.';
-    } else if (errorMessage.includes('Invalid argument') || errorMessage.includes('not found') || errorMessage.includes('No item with the given ID')) {
-      errorMessage = 'Document not found. Please verify the URL or ID is correct and the document exists.';
-    } else if (errorMessage.includes('Service unavailable') || errorMessage.includes('Backend error')) {
-      errorMessage = 'Google Docs service temporarily unavailable. Please try again in a moment.';
-    } else if (errorMessage.includes('quota') || errorMessage.includes('limit')) {
-      errorMessage = 'Service quota exceeded. Please wait a moment and try again.';
+    if (error.message.includes('Permission denied') || error.message.includes('Access denied')) {
+      errorMessage = 'Permission denied. Make sure you have edit access to this document. If this is your document, the web app might need to be configured to run as "User accessing the web app" instead of the script owner.';
+    } else if (error.message.includes('Invalid argument') || error.message.includes('not found')) {
+      errorMessage = 'Document not found. Please check that the URL or ID is correct and the document exists.';
+    } else if (error.message.includes('No item with the given ID could be found')) {
+      errorMessage = 'Document ID not found. Please check that the document ID is correct and you have access to the document.';
     }
     
     throw new Error(errorMessage);
